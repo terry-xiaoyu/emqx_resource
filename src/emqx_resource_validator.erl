@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emqx_widget_validator).
+-module(emqx_resource_validator).
 
 -export([ min/2
         , max/2

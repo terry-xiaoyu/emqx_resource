@@ -1,8 +1,8 @@
 -module(log_tracer).
 
--include_lib("emqx_widget/include/emqx_widget_mod.hrl").
+-include_lib("emqx_resource/include/emqx_resource_mod.hrl").
 
--emqx_widget_api_path("/log_tracer").
+-emqx_resource_api_path("/log_tracer").
 
 -export([ on_start/2
         , on_stop/2
@@ -24,7 +24,7 @@ on_stop(InstId, State) ->
 on_query(InstId, Request, AfterQuery, State) ->
     io:format("== the demo log tracer ~p received request: ~p~nstate: ~p~n",
         [InstId, Request, State]),
-    emqx_widget:query_success(AfterQuery),
+    emqx_resource:query_success(AfterQuery),
     "this is a demo log messages...".
 
 on_health_check(InstId, State = #{health_checked := Checked}) ->

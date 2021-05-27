@@ -3,4 +3,4 @@ set -e
 
 rebar3 compile
 
-erl -sname abc -pa _build/default/lib/*/ebin _build/default/lib/emqx_widget/examples -s demo
+erl -sname abc -pa _build/default/lib/*/ebin _build/default/lib/emqx_resource/examples -s demo

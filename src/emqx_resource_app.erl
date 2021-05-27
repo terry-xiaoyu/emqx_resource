@@ -14,16 +14,16 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emqx_widget_app).
+-module(emqx_resource_app).
 
 -behaviour(application).
 
--include("emqx_widget.hrl").
+-include("emqx_resource.hrl").
 
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
-    emqx_widget_sup:start_link().
+    emqx_resource_sup:start_link().
 
 stop(_State) ->
     ok.

@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
-%% @doc emqx_widget top level supervisor.
+%% @doc emqx_resource top level supervisor.
 %% @end
 %%%-------------------------------------------------------------------
 
--module(emqx_widget_sup).
+-module(emqx_resource_sup).
 
 -behaviour(supervisor).
 
@@ -11,7 +11,7 @@
 
 -export([init/1]).
 
--define(WIDGET_INST_MOD, emqx_widget_instance).
+-define(RESOURCE_INST_MOD, emqx_resource_instance).
 -define(POOL_SIZE, 64). %% set a very large pool size in case all the workers busy
 
 start_link() ->
@@ -19,11 +19,11 @@ start_link() ->
 
 init([]) ->
     TabOpts = [named_table, set, public, {read_concurrency, true}],
-    _ = ets:new(emqx_widget_instance, TabOpts),
+    _ = ets:new(emqx_resource_instance, TabOpts),
 
     SupFlags = #{strategy => one_for_one, intensity => 10, period => 10},
-    Pool = ?WIDGET_INST_MOD,
-    Mod = ?WIDGET_INST_MOD,
+    Pool = ?RESOURCE_INST_MOD,
+    Mod = ?RESOURCE_INST_MOD,
     ensure_pool(Pool, hash, [{size, ?POOL_SIZE}]),
     {ok, {SupFlags, [
         begin

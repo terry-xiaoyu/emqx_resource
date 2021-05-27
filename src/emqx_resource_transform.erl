@@ -1,4 +1,4 @@
--module(emqx_widget_transform).
+-module(emqx_resource_transform).
 
 -include_lib("syntax_tools/include/merl.hrl").
 
@@ -10,7 +10,7 @@ parse_transform(Forms, _Opts) ->
     debug_print(ModName, AST),
     AST.
 
--ifdef(WIDGET_DEBUG).
+-ifdef(RESOURCE_DEBUG).
 
 debug_print(ModName, Ts) ->
     {ok, Io} = file:open("./" ++ atom_to_list(ModName) ++ ".trans.erl", [write]),
@@ -41,7 +41,7 @@ forms(_, []) -> [].
 
 form(ModName, Form) ->
     case Form of
-        ?Q("-emqx_widget_api_path('@Path').") ->
+        ?Q("-emqx_resource_api_path('@Path').") ->
             {fix_spec_attrs() ++ fix_api_attrs(erl_syntax:concrete(Path)) ++ fix_api_exports(),
              [],
              fix_spec_funcs(ModName) ++ fix_api_funcs()};
@@ -51,11 +51,11 @@ form(ModName, Form) ->
     end.
 
 fix_spec_attrs() ->
-    [ ?Q("-export([emqx_widget_schema/0]).")
+    [ ?Q("-export([emqx_resource_schema/0]).")
     ].
 fix_spec_funcs(ModName) ->
     SchemaModName = list_to_atom(atom_to_list(ModName) ++ "_schema"),
-    [ erl_syntax:revert(?Q("emqx_widget_schema() -> '@SchemaModName@'."))
+    [ erl_syntax:revert(?Q("emqx_resource_schema() -> '@SchemaModName@'."))
     ].
 
 fix_api_attrs(Path0) ->
@@ -81,9 +81,9 @@ fix_api_exports() ->
 fix_api_funcs() ->
     [?Q("api_get_all(_Binding, _Params) ->
             {200, #{code => 0, data =>
-                [format_data(Data) || Data <- emqx_widget:list_instances_verbose()]}}."),
+                [format_data(Data) || Data <- emqx_resource:list_instances_verbose()]}}."),
      ?Q("api_get(#{id := Id}, _Params) ->
-            case emqx_widget:get_instance(Id) of
+            case emqx_resource:get_instance(Id) of
                 {ok, Data} ->
                     {200, #{code => 0, data => format_data(Data)}};
                 {error, not_found} ->
@@ -91,9 +91,9 @@ fix_api_funcs() ->
             end."),
      ?Q("api_put(#{id := Id}, Params) ->
             JsonStr = jsx:encode([{<<\"id\">>, list_to_binary(Id)} | Params]),
-            case emqx_widget:parse_config(JsonStr) of
-                {ok, InstId, WidgetType, Config} ->
-                    case emqx_widget:update(InstId, WidgetType, Config) of
+            case emqx_resource:parse_config(JsonStr) of
+                {ok, InstId, ResourceType, Config} ->
+                    case emqx_resource:update(InstId, ResourceType, Config) of
                         {ok, Data} ->
                             {200, #{code => 0, data => format_data(Data)}};
                         {error, Reason} ->
@@ -106,7 +106,7 @@ fix_api_funcs() ->
                         iolist_to_binary(io_lib:format(\"~p\", [Reason]))}}
             end."),
      ?Q("api_delete(#{id := Id}, _Params) ->
-            case emqx_widget:remove(Id) of
+            case emqx_resource:remove(Id) of
                 ok -> {200, #{code => 0, data => #{}}};
                 {error, Reason} ->
                     {500, #{code => 102, message =>

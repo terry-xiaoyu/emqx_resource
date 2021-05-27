@@ -12,7 +12,7 @@
 
 -type t_cache_logs_in() :: memory | file.
 
-structs() -> [id, widget_type, config].
+structs() -> [id, resource_type, config].
 
 translations() -> ["config"].
 
@@ -25,9 +25,9 @@ fields(id) ->
         (_) -> undefined
      end];
 
-fields(widget_type) ->
+fields(resource_type) ->
     [fun
-        (mapping) -> "widget_type";
+        (mapping) -> "resource_type";
         (type) -> string();
         (_) -> undefined
      end];

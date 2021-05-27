@@ -10,13 +10,13 @@ marp: true
 
 <!-- _class: lead -->
 
-# EMQX Widget
+# EMQX Resource
 
 ---
 
 ## What is it for
 
-The [emqx_widget](https://github.com/terry-xiaoyu/emqx_widget) for managing configurations and runtime states for dashboard components .
+The [emqx_resource](https://github.com/terry-xiaoyu/emqx_resource) for managing configurations and runtime states for dashboard components .
 
 ![bg right](https://docs.emqx.cn/assets/img/rule_action_1@2x.73766093.png)
 
@@ -32,11 +32,11 @@ The little log tracer
 
 - The hocon schema file (log_tracer_schema.erl):
 
-https://github.com/terry-xiaoyu/emqx_widget/blob/main/examples/log_tracer_schema.erl
+https://github.com/terry-xiaoyu/emqx_resource/blob/main/examples/log_tracer_schema.erl
 
 - The callback file (log_tracer.erl):
 
-https://github.com/terry-xiaoyu/emqx_widget/blob/main/examples/log_tracer.erl
+https://github.com/terry-xiaoyu/emqx_resource/blob/main/examples/log_tracer.erl
 
 ---
 
@@ -51,7 +51,7 @@ Load instance from config files (auto loaded)
 ```
 ## This will load all of the "*.conf" file under that directory:
 
-emqx_widget:load_instances("./_build/default/lib/emqx_widget/examples").
+emqx_resource:load_instances("./_build/default/lib/emqx_resource/examples").
 ```
 
 The config file is validated against the schema (`*_schema.erl`) before loaded.
@@ -60,34 +60,34 @@ The config file is validated against the schema (`*_schema.erl`) before loaded.
 
 # List Types and Instances
 
-- To list all the available widget types:
+- To list all the available resource types:
 
 ```
-emqx_widget:list_types().
-emqx_widget:list_instances().
+emqx_resource:list_types().
+emqx_resource:list_instances().
 ```
 
 - And there's `*_verbose` versions for these `list_*` APIs:
 
 ```
-emqx_widget:list_types_verbose().
-emqx_widget:list_instances_verbose().
+emqx_resource:list_types_verbose().
+emqx_resource:list_instances_verbose().
 ```
 
 ---
 # Instance management
 
-- To get a widget types and instances:
+- To get a resource types and instances:
 
 ```
-emqx_widget:get_type(log_tracer).
-emqx_widget:get_instance("log_tracer_clientid_shawn").
+emqx_resource:get_type(log_tracer).
+emqx_resource:get_instance("log_tracer_clientid_shawn").
 ```
 
-- To create a widget instances:
+- To create a resource instances:
 
 ```
-emqx_widget:create("log_tracer2", log_tracer,
+emqx_resource:create("log_tracer2", log_tracer,
 #{bulk => <<"1KB">>,cache_log_dir => <<"/tmp">>,
   cache_logs_in => <<"memory">>,chars_limit => 1024,
   condition => #{<<"app">> => <<"emqx">>},
@@ -96,17 +96,17 @@ emqx_widget:create("log_tracer2", log_tracer,
 
 ---
 
-- To update a widget:
+- To update a resource:
 
 ```
-emqx_widget:update("log_tracer2", log_tracer,
+emqx_resource:update("log_tracer2", log_tracer,
 #{bulk => <<"100KB">>}).
 ```
 
-- To delete a widget:
+- To delete a resource:
 
 ```
-emqx_widget:remove("log_tracer2").
+emqx_resource:remove("log_tracer2").
 ```
 
 ---
@@ -133,7 +133,7 @@ To update an existing log tracer or create a new one:
 
 ```
 INST='{
-  "widget_type": "log_tracer",
+  "resource_type": "log_tracer",
   "config": {
     "condition": {
       "app": "emqx"

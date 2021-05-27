@@ -1,0 +1,2 @@
+-behaviour(emqx_resource).
+-compile({parse_transform, emqx_resource_transform}).

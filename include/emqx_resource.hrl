@@ -1,13 +1,13 @@
--type widget_type() :: module().
+-type resource_type() :: module().
 -type instance_id() :: string().
--type widget_config() :: map().
--type widget_spec() :: map().
--type widget_state() :: term().
--type widget_data() :: #{
+-type resource_config() :: map().
+-type resource_spec() :: map().
+-type resource_state() :: term().
+-type resource_data() :: #{
     id => string(),
     mod => module(),
-    config => widget_config(),
-    state => widget_state(),
+    config => resource_config(),
+    state => resource_state(),
     status => started | stopped
 }.
 
