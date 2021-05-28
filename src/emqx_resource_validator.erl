@@ -20,6 +20,7 @@
         , max/2
         , equals/2
         , enum/1
+        , required/1
         ]).
 
 max(Type, Max) ->
@@ -35,6 +36,11 @@ enum(Items) ->
     fun(Value) ->
         return(lists:member(Value, Items),
             err_limit({enum, {is_member_of, Items}, {got, Value}}))
+    end.
+
+required(ErrMsg) ->
+    fun(undefined) -> {error, ErrMsg};
+       (_) -> ok
     end.
 
 limit(Type, Op, Expected) ->
