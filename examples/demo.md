@@ -99,8 +99,7 @@ emqx_resource:create("log_tracer2", log_tracer,
 - To update a resource:
 
 ```
-emqx_resource:update("log_tracer2", log_tracer,
-#{bulk => <<"100KB">>}).
+emqx_resource:update("log_tracer2", log_tracer, #{bulk => <<"100KB">>}, []).
 ```
 
 - To delete a resource:

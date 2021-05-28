@@ -5,15 +5,15 @@
 -export([parse_transform/2]).
 
 parse_transform(Forms, _Opts) ->
-    ModName = hd([Mod || {attribute, _, module, Mod} <- Forms]),
-    AST = trans(ModName, proplists:delete(eof, Forms)),
-    debug_print(ModName, AST),
+    Mod = hd([M || {attribute, _, module, M} <- Forms]),
+    AST = trans(Mod, proplists:delete(eof, Forms)),
+    debug_print(Mod, AST),
     AST.
 
 -ifdef(RESOURCE_DEBUG).
 
-debug_print(ModName, Ts) ->
-    {ok, Io} = file:open("./" ++ atom_to_list(ModName) ++ ".trans.erl", [write]),
+debug_print(Mod, Ts) ->
+    {ok, Io} = file:open("./" ++ atom_to_list(Mod) ++ ".trans.erl", [write]),
     do_debug_print(Io, Ts),
     file:close(Io).
 
@@ -23,28 +23,28 @@ do_debug_print(Io, T) ->
     io:put_chars(Io, erl_prettypr:format(merl:tree(T))),
     io:nl(Io).
 -else.
-debug_print(_ModName, _AST) ->
+debug_print(_Mod, _AST) ->
     ok.
 -endif.
 
-trans(ModName, Forms) ->
-    forms(ModName, Forms) ++ [erl_syntax:revert(erl_syntax:eof_marker())].
+trans(Mod, Forms) ->
+    forms(Mod, Forms) ++ [erl_syntax:revert(erl_syntax:eof_marker())].
 
-forms(ModName, [F0 | Fs0]) ->
-    case form(ModName, F0) of
+forms(Mod, [F0 | Fs0]) ->
+    case form(Mod, F0) of
         {CurrForm, AppendedForms} ->
-            CurrForm ++ forms(ModName, Fs0) ++ AppendedForms;
+            CurrForm ++ forms(Mod, Fs0) ++ AppendedForms;
         {AHeadForms, CurrForm, AppendedForms} ->
-            AHeadForms ++ CurrForm ++ forms(ModName, Fs0) ++ AppendedForms
+            AHeadForms ++ CurrForm ++ forms(Mod, Fs0) ++ AppendedForms
     end;
 forms(_, []) -> [].
 
-form(ModName, Form) ->
+form(Mod, Form) ->
     case Form of
         ?Q("-emqx_resource_api_path('@Path').") ->
             {fix_spec_attrs() ++ fix_api_attrs(erl_syntax:concrete(Path)) ++ fix_api_exports(),
              [],
-             fix_spec_funcs(ModName) ++ fix_api_funcs()};
+             fix_spec_funcs(Mod) ++ fix_api_funcs(Mod)};
         _ ->
             %io:format("---other form: ~p~n", [Form]),
             {[], [Form], []}
@@ -53,9 +53,9 @@ form(ModName, Form) ->
 fix_spec_attrs() ->
     [ ?Q("-export([emqx_resource_schema/0]).")
     ].
-fix_spec_funcs(ModName) ->
-    SchemaModName = list_to_atom(atom_to_list(ModName) ++ "_schema"),
-    [ erl_syntax:revert(?Q("emqx_resource_schema() -> '@SchemaModName@'."))
+fix_spec_funcs(Mod) ->
+    SchemaMod = list_to_atom(atom_to_list(Mod) ++ "_schema"),
+    [ erl_syntax:revert(?Q("emqx_resource_schema() -> '@SchemaMod@'."))
     ].
 
 fix_api_attrs(Path0) ->
@@ -78,41 +78,20 @@ fix_api_attrs(Path0) ->
 fix_api_exports() ->
     [?Q("-export([api_get_all/2, api_get/2, api_put/2, api_delete/2]).")].
 
-fix_api_funcs() ->
-    [?Q("api_get_all(_Binding, _Params) ->
-            {200, #{code => 0, data =>
-                [format_data(Data) || Data <- emqx_resource:list_instances_verbose()]}}."),
-     ?Q("api_get(#{id := Id}, _Params) ->
-            case emqx_resource:get_instance(Id) of
-                {ok, Data} ->
-                    {200, #{code => 0, data => format_data(Data)}};
-                {error, not_found} ->
-                    {404, #{code => 102, message => not_found}}
-            end."),
-     ?Q("api_put(#{id := Id}, Params) ->
-            JsonStr = jsx:encode([{<<\"id\">>, list_to_binary(Id)} | Params]),
-            case emqx_resource:parse_config(JsonStr) of
-                {ok, InstId, ResourceType, Config} ->
-                    case emqx_resource:update(InstId, ResourceType, Config) of
-                        {ok, Data} ->
-                            {200, #{code => 0, data => format_data(Data)}};
-                        {error, Reason} ->
-                            {500, #{code => 102, message =>
-                                iolist_to_binary(io_lib:format(\"~p\", [Reason]))
-                            }}
-                    end;
-                {error, Reason} ->
-                    {400, #{code => 108, message =>
-                        iolist_to_binary(io_lib:format(\"~p\", [Reason]))}}
-            end."),
-     ?Q("api_delete(#{id := Id}, _Params) ->
-            case emqx_resource:remove(Id) of
-                ok -> {200, #{code => 0, data => #{}}};
-                {error, Reason} ->
-                    {500, #{code => 102, message =>
-                        iolist_to_binary(io_lib:format(\"~p\", [Reason]))}}
-            end.")
+fix_api_funcs(Mod) ->
+    [erl_syntax:revert(?Q(
+        "api_get_all(Binding, Params) ->
+            emqx_resource_api:get_all('@Mod@', Binding, Params).")),
+     erl_syntax:revert(?Q(
+        "api_get(Binding, Params) ->
+            emqx_resource_api:get('@Mod@', Binding, Params).")),
+     erl_syntax:revert(?Q(
+        "api_put(Binding, Params) ->
+            emqx_resource_api:put('@Mod@', Binding, Params).")),
+     erl_syntax:revert(?Q(
+        "api_delete(Binding, Params) ->
+            emqx_resource_api:delete('@Mod@', Binding, Params)."))
     ].
 
-mk_path(Path, id) -> Path ++ "/:id";
+mk_path(Path, id) -> Path ++ "/:bin:id";
 mk_path(Path, noid) -> Path.

@@ -92,12 +92,28 @@ load_file(File) ->
         {error, Reason} ->
             logger:error("load resource from ~p failed: ~p", [File, Reason]);
         RawConfig ->
-            case emqx_resource:parse_config(RawConfig) of
+            case hocon:binary(RawConfig, #{format => map}) of
+                {ok, #{<<"id">> := Id, <<"resource_type">> := ResourceTypeStr,
+                       <<"config">> := MapConfig}} ->
+                    case emqx_resource:resource_type_from_str(ResourceTypeStr) of
+                        {ok, ResourceType} ->
+                            parse_and_load_config(Id, ResourceType, MapConfig);
+                        {error, Reason} ->
+                            logger:error("no such resource type: ~s, ~p",
+                                [ResourceTypeStr, Reason])
+                    end;
                 {error, Reason} ->
-                    logger:error("load resource instance from ~p failed: ~p", [File, Reason]);
-                {ok, InstId, ResourceType, InstConf} ->
-                    create_instance_local(InstId, ResourceType, InstConf)
+                    logger:error("load resource from ~p failed: ~p", [File, Reason])
             end
+    end.
+
+parse_and_load_config(InstId, ResourceType, MapConfig) ->
+    case emqx_resource:parse_config(ResourceType, MapConfig) of
+        {error, Reason} ->
+            logger:error("parse config for resource ~p of type ~p failed: ~p",
+                [InstId, ResourceType, Reason]);
+        {ok, InstConf} ->
+            create_instance_local(InstId, ResourceType, InstConf)
     end.
 
 create_instance_local(InstId, ResourceType, InstConf) ->
@@ -127,8 +143,8 @@ handle_call({create, InstId, ResourceType, Config}, _From, State) ->
 handle_call({create_dry_run, InstId, ResourceType, Config}, _From, State) ->
     {reply, do_create_dry_run(InstId, ResourceType, Config), State};
 
-handle_call({update, InstId, ResourceType, Config}, _From, State) ->
-    {reply, do_update(InstId, ResourceType, Config), State};
+handle_call({update, InstId, ResourceType, Config, Params}, _From, State) ->
+    {reply, do_update(InstId, ResourceType, Config, Params), State};
 
 handle_call({remove, InstId}, _From, State) ->
     {reply, do_remove(InstId), State};
@@ -160,10 +176,11 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%------------------------------------------------------------------------------
 
-do_update(InstId, ResourceType, NewConfig) when is_map(NewConfig) ->
+do_update(InstId, ResourceType, NewConfig, Params) ->
     case lookup(InstId) of
         {ok, #{mod := ResourceType, state := ResourceState, config := OldConfig}} ->
-            Config = maps:merge(OldConfig, NewConfig),
+            Config = emqx_resource:call_config_merge(ResourceType, OldConfig,
+                        NewConfig, Params),
             case do_create_dry_run(InstId, ResourceType, Config) of
                 ok ->
                     do_remove(ResourceType, InstId, ResourceState),
@@ -177,7 +194,7 @@ do_update(InstId, ResourceType, NewConfig) when is_map(NewConfig) ->
             do_create(InstId, ResourceType, NewConfig)
     end.
 
-do_create(InstId, ResourceType, Config) when is_map(Config) ->
+do_create(InstId, ResourceType, Config) ->
     case lookup(InstId) of
         {ok, _} -> {error, already_created};
         _ ->
@@ -194,7 +211,7 @@ do_create(InstId, ResourceType, Config) when is_map(Config) ->
             end
     end.
 
-do_create_dry_run(InstId, ResourceType, Config) when is_map(Config) ->
+do_create_dry_run(InstId, ResourceType, Config) ->
     case emqx_resource:call_start(InstId, ResourceType, Config) of
         {ok, ResourceState0} ->
             Return = case emqx_resource:call_health_check(InstId, ResourceType, ResourceState0) of

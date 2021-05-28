@@ -1,10 +1,10 @@
 -type resource_type() :: module().
--type instance_id() :: string().
+-type instance_id() :: binary().
 -type resource_config() :: map().
 -type resource_spec() :: map().
 -type resource_state() :: term().
 -type resource_data() :: #{
-    id => string(),
+    id => instance_id(),
     mod => module(),
     config => resource_config(),
     state => resource_state(),

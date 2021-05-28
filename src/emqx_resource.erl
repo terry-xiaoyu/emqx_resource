@@ -37,14 +37,16 @@
 
 %% APIs for instances
 
--export([parse_config/1]).
+-export([ parse_config/2
+        , resource_type_from_str/1
+        ]).
 
 %% Sync resource instances and files
 %% provisional solution: rpc:multical to all the nodes for creating/updating/removing
 %% todo: replicate operations
 -export([ create/3 %% store the config and start the instance
         , create_dry_run/3 %% run start/2, health_check/2 and stop/1 sequentially
-        , update/3 %% update the config, stop the old instance and start the new one
+        , update/4 %% update the config, stop the old instance and start the new one
                    %% it will create a new resource when the id does not exist
         , remove/1 %% remove the config and stop the instance
         ]).
@@ -62,6 +64,7 @@
 -export([ call_start/3  %% start the instance
         , call_health_check/3 %% verify if the resource is working normally
         , call_stop/3   %% stop the instance
+        , call_config_merge/4 %% merge the config when updating
         ]).
 
 -export([ list_instances/0 %% list all the instances, id only.
@@ -141,10 +144,10 @@ create(InstId, ResourceType, Config) ->
 create_dry_run(InstId, ResourceType, Config) ->
     ?CLUSTER_CALL(call_instance, [InstId, {create_dry_run, InstId, ResourceType, Config}]).
 
--spec update(instance_id(), resource_type(), resource_config()) ->
+-spec update(instance_id(), resource_type(), resource_config(), term()) ->
     {ok, resource_data()} | {error, Reason :: term()}.
-update(InstId, ResourceType, Config) ->
-    ?CLUSTER_CALL(call_instance, [InstId, {update, InstId, ResourceType, Config}], {ok, _}).
+update(InstId, ResourceType, Config, Params) ->
+    ?CLUSTER_CALL(call_instance, [InstId, {update, InstId, ResourceType, Config, Params}], {ok, _}).
 
 -spec remove(instance_id()) -> ok | {error, Reason :: term()}.
 remove(InstId) ->
@@ -213,33 +216,35 @@ call_health_check(InstId, Mod, ResourceState) ->
 call_stop(InstId, Mod, ResourceState) ->
     ?SAFE_CALL(Mod:on_stop(InstId, ResourceState)).
 
--spec parse_config(binary()) ->
-    {ok, instance_id(), resource_type(), resource_config()} | {error, term()}.
-parse_config(RawConfig) ->
+-spec call_config_merge(module(), resource_config(), resource_config(), term()) ->
+    resource_config().
+call_config_merge(Mod, OldConfig, NewConfig, Params) ->
+    ?SAFE_CALL(Mod:on_config_merge(OldConfig, NewConfig, Params)).
+
+-spec parse_config(resource_type(), binary() | term()) ->
+    {ok, resource_config()} | {error, term()}.
+parse_config(ResourceType, RawConfig) when is_binary(RawConfig) ->
     case hocon:binary(RawConfig, #{format => richmap}) of
         {ok, MapConfig} ->
-            ResourceTypeStr = hocon_schema:deep_get("resource_type", MapConfig, value),
-            do_parse_config(ResourceTypeStr, MapConfig);
-        {error, Reason} ->
-            {error, Reason}
-    end.
+            do_parse_config(ResourceType, MapConfig);
+        Error -> Error
+    end;
+parse_config(ResourceType, RawConfigTerm) ->
+    parse_config(ResourceType, jsx:encode(#{<<"config">> => RawConfigTerm})).
 
-do_parse_config(ResourceTypeStr, MapConfig) ->
-    case resource_type_from_str(ResourceTypeStr) of
-        {ok, ResourceType} ->
-            case ?SAFE_CALL(hocon_schema:generate(ResourceType:emqx_resource_schema(), MapConfig)) of
-                {error, Reason} -> {error, Reason};
-                Config ->
-                    InstId = proplists:get_value(id, Config),
-                    InstConf = maps:from_list(proplists:get_value(config, Config)),
-                    {ok, InstId, ResourceType, InstConf}
-            end;
-        {error, Reason} ->
-            {error, Reason}
+
+-spec do_parse_config(resource_type(), map()) -> {ok, resource_config()} | {error, term()}.
+do_parse_config(ResourceType, MapConfig) ->
+    case ?SAFE_CALL(hocon_schema:generate(ResourceType:emqx_resource_schema(), MapConfig)) of
+        {error, Reason} -> {error, Reason};
+        Config ->
+            InstConf = maps:from_list(proplists:get_value(config, Config)),
+            {ok, InstConf}
     end.
 
 %% =================================================================================
 
+-spec resource_type_from_str(string()) -> {ok, resource_type()} | {error | term()}.
 resource_type_from_str(ResourceType) ->
     try Mod = list_to_existing_atom(str(ResourceType)),
         case emqx_resource:is_resource_mod(Mod) of
