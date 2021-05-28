@@ -2,9 +2,7 @@
 
 -include_lib("typerefl/include/types.hrl").
 
--behaviour(hocon_schema).
-
--export([structs/0, fields/1, translations/0, translation/1]).
+-export([fields/1]).
 
 -reflect_type([t_level/0, t_cache_logs_in/0]).
 
@@ -12,34 +10,15 @@
 
 -type t_cache_logs_in() :: memory | file.
 
-structs() -> [id, resource_type, config].
-
-translations() -> ["config"].
-
-translation("config") -> [].
-
-fields(id) ->
-    [fun
-        (mapping) -> "id";
-        (type) -> string();
-        (_) -> undefined
-     end];
-
-fields(resource_type) ->
-    [fun
-        (mapping) -> "resource_type";
-        (type) -> string();
-        (_) -> undefined
-     end];
-
-fields(config) ->
+fields("config") ->
     [ {condition, fun condition/1}
     , {level, fun level/1}
     , {enable_cache, fun enable_cache/1}
     , {cache_logs_in, fun cache_logs_in/1}
     , {cache_log_dir, fun cache_log_dir/1}
     , {bulk, fun bulk/1}
-    ].
+    ];
+fields(_) -> [].
 
 condition(mapping) -> "config.condition";
 condition(type) -> map();

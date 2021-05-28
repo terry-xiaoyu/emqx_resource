@@ -52,10 +52,12 @@ form(Mod, Form) ->
 
 fix_spec_attrs() ->
     [ ?Q("-export([emqx_resource_schema/0]).")
+    , ?Q("-export([structs/0]).")
+    , ?Q("-behaviour(hocon_schema).")
     ].
-fix_spec_funcs(Mod) ->
-    SchemaMod = list_to_atom(atom_to_list(Mod) ++ "_schema"),
-    [ erl_syntax:revert(?Q("emqx_resource_schema() -> '@SchemaMod@'."))
+fix_spec_funcs(_Mod) ->
+    [ (?Q("emqx_resource_schema() -> <<\"demo_swagger_schema\">>."))
+    , ?Q("structs() -> [\"config\"].")
     ].
 
 fix_api_attrs(Path0) ->

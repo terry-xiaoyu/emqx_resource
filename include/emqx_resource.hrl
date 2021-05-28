@@ -1,6 +1,6 @@
 -type resource_type() :: module().
 -type instance_id() :: binary().
--type resource_config() :: map().
+-type resource_config() :: jsx:json_term().
 -type resource_spec() :: map().
 -type resource_state() :: term().
 -type resource_data() :: #{

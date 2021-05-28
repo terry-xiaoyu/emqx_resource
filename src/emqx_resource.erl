@@ -79,6 +79,16 @@
 
 -define(EXT, "*.spec").
 
+-optional_callbacks([ on_query/4
+                    , on_health_check/2
+                    , on_api_reply_format/1
+                    , on_config_merge/3
+                    ]).
+
+-callback on_api_reply_format(resource_data()) -> map().
+
+-callback on_config_merge(resource_config(), resource_config(), term()) -> resource_config().
+
 %% when calling emqx_resource:start/1
 -callback on_start(instance_id(), resource_config()) ->
     {ok, resource_state()} | {error, Reason :: term()}.
@@ -232,10 +242,9 @@ parse_config(ResourceType, RawConfig) when is_binary(RawConfig) ->
 parse_config(ResourceType, RawConfigTerm) ->
     parse_config(ResourceType, jsx:encode(#{<<"config">> => RawConfigTerm})).
 
-
 -spec do_parse_config(resource_type(), map()) -> {ok, resource_config()} | {error, term()}.
 do_parse_config(ResourceType, MapConfig) ->
-    case ?SAFE_CALL(hocon_schema:generate(ResourceType:emqx_resource_schema(), MapConfig)) of
+    case ?SAFE_CALL(hocon_schema:generate(ResourceType, MapConfig)) of
         {error, Reason} -> {error, Reason};
         Config ->
             InstConf = maps:from_list(proplists:get_value(config, Config)),
@@ -244,7 +253,7 @@ do_parse_config(ResourceType, MapConfig) ->
 
 %% =================================================================================
 
--spec resource_type_from_str(string()) -> {ok, resource_type()} | {error | term()}.
+-spec resource_type_from_str(string()) -> {ok, resource_type()} | {error, term()}.
 resource_type_from_str(ResourceType) ->
     try Mod = list_to_existing_atom(str(ResourceType)),
         case emqx_resource:is_resource_mod(Mod) of

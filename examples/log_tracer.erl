@@ -13,6 +13,12 @@
         , on_config_merge/3
         ]).
 
+%% callbacks for emqx_resource config schema
+-export([fields/1]).
+
+fields(ConfPath) ->
+    log_tracer_schema:fields(ConfPath).
+
 on_start(InstId, Config) ->
     io:format("== the demo log tracer ~p started.~nconfig: ~p~n", [InstId, Config]),
     {ok, #{logger_handler_id => abc, health_checked => 0}}.
